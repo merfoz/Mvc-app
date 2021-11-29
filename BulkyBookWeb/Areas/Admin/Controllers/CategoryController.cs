@@ -1,21 +1,25 @@
 ﻿
 using BulkyBook.DataAccess;
+using BulkyBook.DataAccess.Repository;
+using BulkyBook.DataAccess.Repository.IRepository;
 using BulkyBook.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+
 namespace BulkyBookWeb.Controllers
 {
+    [Area("Admin")]
     public class CategoryController : Controller
     {
-        private readonly ApplicationDbContext _db;
-        public CategoryController(ApplicationDbContext db)
+        private readonly IUnitOfWork _unitOfWork;
+        public CategoryController(IUnitOfWork unitOfWork)
         {
-            _db = db;
+            _unitOfWork = unitOfWork;
         }
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            IEnumerable<Category> objCategoryList = await _db.Categories.ToListAsync();
+            IEnumerable<Category> objCategoryList = _unitOfWork.Category.GetAll();
             return View(objCategoryList);
         }
         
@@ -26,15 +30,15 @@ namespace BulkyBookWeb.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Category obj)
+        public IActionResult Create(Category obj)
         {
             if(obj.Name == obj.DisplayOrder.ToString())
             {
                 ModelState.AddModelError("name","The DisplayOrder cannot exactly match the Name.");
             }
-            if (ModelState.IsValid) { 
-             await _db.Categories.AddAsync(obj);
-             _db.SaveChanges();
+            if (ModelState.IsValid) {
+                _unitOfWork.Category.Add(obj);
+                _unitOfWork.Save();
                 TempData["success"] = "Category created successfully!";
             return RedirectToAction("Index");
             }
@@ -43,7 +47,7 @@ namespace BulkyBookWeb.Controllers
             
         }
 
-        public async Task<IActionResult> Edit(int? id)
+        public IActionResult Edit(int? id)
         {
             
            if(id== null || id == 0)
@@ -51,7 +55,7 @@ namespace BulkyBookWeb.Controllers
                 return NotFound();
             }
             //var categoryFromDb = await _db.Categories.FindAsync(id);
-            var categoryFromDb = _db.Categories.FirstOrDefault(c => c.Id == id);
+            var categoryFromDb = _unitOfWork.Category.GetFirstOrDefault(c => c.Id == id);
 
             if (categoryFromDb == null)
             {
@@ -61,7 +65,7 @@ namespace BulkyBookWeb.Controllers
         }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Category obj)
+        public IActionResult Edit(Category obj)
         {
             if (obj.Name == obj.DisplayOrder.ToString())
             {
@@ -69,8 +73,8 @@ namespace BulkyBookWeb.Controllers
             }
             if (ModelState.IsValid)
             {
-                _db.Categories.Update(obj);
-                await _db.SaveChangesAsync();
+                _unitOfWork.Category.Update(obj);
+                _unitOfWork.Save();
                 TempData["success"] = "Category edited successfully!";
                 return RedirectToAction("Index");
             }
@@ -97,36 +101,36 @@ namespace BulkyBookWeb.Controllers
         //    return RedirectToAction("Index");
         //}
 
-        public async Task<IActionResult> Delete(int? id)
+        public IActionResult Delete(int? id)
         {
 
             if (id == null || id == 0)
             {
                 return NotFound();
             }
-            var categoryFromDb = await _db.Categories.FindAsync(id);
-            //var categoryFromDbFirst = _db.Categories.FirstOrDefault(c => c.Id == id);
+            //var categoryFromDb = _db.Categories.FindAsync(id);
+            var categoryFromDbFirst = _unitOfWork.Category.GetFirstOrDefault(c => c.Id == id);
 
-            if (categoryFromDb == null)
+            if (categoryFromDbFirst == null)
             {
                 return NotFound();
             }
-            return View(categoryFromDb);
+            return View(categoryFromDbFirst);
         }
 
 
         [HttpPost,ActionName("Delete")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeletePOST(int? id)
+        public  IActionResult DeletePOST(int? id)
         {
-            var obj = await _db.Categories.FindAsync(id);
-            if(obj == null)
+            var obj = _unitOfWork.Category.GetFirstOrDefault(c => c.Id == id);
+            if (obj == null)
             {
                 return NotFound();
             }
 
-            _db.Categories.Remove(obj);
-            await _db.SaveChangesAsync();
+            _unitOfWork.Category.Remove(obj);
+            _unitOfWork.Save();
             TempData["success"] = "Category deleted successfully!";
             return RedirectToAction("Index");
         }
